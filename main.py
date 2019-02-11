@@ -543,6 +543,9 @@ def getFlightSchedule(baseInputPath,baseDate, arrFlightList, depFlightList):
     uniqueRegos = list(set(getColumn(arrFlightList, 0) + getColumn(depFlightList, 0)))
     FlightSchedulePerACDay = []
 
+    all_rows = 0
+    del_rows = 0
+
     for rego in uniqueRegos:
 
         arrFlights = makeList(getIndexMatch(getColumn(arrFlightList, 0), rego))
@@ -579,7 +582,11 @@ def getFlightSchedule(baseInputPath,baseDate, arrFlightList, depFlightList):
         addCleanRaw = DataFrame(np.concatenate((arrFlightsDayClean, depFlightsDayClean), axis=0),columns=['a', 'b', 'c', 'd', 'e'])
         addCleanRawSorted = addCleanRaw.sort_values(['b', 'c', 'd'], ascending=[True, True, True])
 
+        all_rows += len(addCleanRawSorted.index)
+
         addClean = cleanAddClean(addCleanRawSorted)
+
+        del_rows += len(addClean.index)
 
         days = list(set(addClean.iloc[:, 1].copy()))
 
@@ -935,12 +942,27 @@ def writeToCSV(FlightSchedule,ProbDists,Statistics,arrFlightList,depFlightList,b
             inDist.to_csv(baseFileName + "inDist" + "_" + str(len(dayRange)) + "D.csv", header=False, index=False)
             outDist.to_csv(baseFileName + "outDist" + "_" + str(len(dayRange)) + "D.csv", header=False, index=False)
 
+        MinLines = 1000
+        MaxLines = 0
+
+        OffDays = [3,6,7,19,24,30]
+
         for day in dayRange:
 
             dayFlightSchedule = FlightSchedule.loc[FlightSchedule['Date'] == day].reset_index().drop(['index'], axis=1)
+
+            if day not in OffDays:
+                MaxLines = max(MaxLines,dayFlightSchedule.shape[0])
+                MinLines = min(MinLines,dayFlightSchedule.shape[0])
+
             fileNameFS = baseOutputPath + 'FlightSchedules/FlightSchedule_' + baseDate + str(day) + '.csv'
 
             dayFlightSchedule.to_csv(fileNameFS)
+
+        print('Max Lines:')
+        print(MaxLines)
+        print('MinLines:')
+        print(MinLines)
 
     except requests.exceptions.ConnectionError as error:
 
